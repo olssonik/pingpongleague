@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 
 export async function registerRoutes(app: Express): Promise<Server> {
 
-  app.get('/api/ping-pong-data', async (req, res) => {
+  app.get('/api/get_data', async (req, res) => {
     try {
       const response = await fetch('/api/get_data'); // your python server URL
       if (!response.ok) throw new Error('Failed to fetch data');
