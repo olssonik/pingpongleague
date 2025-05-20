@@ -79,7 +79,7 @@ recalculate_all_elos()
 get_data()
 
 
-@app.route("/api/get_data", methods=["GET"])
+@app.route("/get_data", methods=["GET"])
 def trigger_recalc():
     obj = get_data()
     return jsonify(obj), 200
