@@ -48,31 +48,25 @@ def recalculate_all_elos():
 def get_data():
     conn = sqlite3.connect(db)
     cursor = conn.cursor()
-    cursor.execute("SELECT p1, p2, winner, date_played, archived FROM games ORDER BY id ASC")
+    cursor.execute(
+        "SELECT id, p1, p2, winner, date_played, archived FROM games ORDER BY id ASC"
+    )
     all_games = cursor.fetchall()
     games = []
 
-    for p1, p2, winner, timestamp, archived in all_games:
+    for id, p1, p2, winner, timestamp, archived in all_games:
         if not archived:
-            games.append({
-                'players': [p1, p2],
-                'winner': winner,
-                'date': timestamp
-            })
+            games.append(
+                {"id": id, "players": [p1, p2], "winner": winner, "date": timestamp}
+            )
 
     players = []
     cursor.execute("SELECT username, ELO FROM players")
     all_players = cursor.fetchall()
     for username, elo in all_players:
-        players.append({
-            'username': username,
-            'elo': elo
-        })
+        players.append({"username": username, "elo": elo})
 
-    obj = {
-        'players': players,
-        'games': games
-    }
+    obj = {"players": players, "games": games}
 
     conn.commit()
     conn.close()
@@ -83,6 +77,7 @@ def get_data():
 recalculate_all_elos()
 
 get_data()
+
 
 @app.route("/get_data", methods=["GET"])
 def trigger_recalc():
