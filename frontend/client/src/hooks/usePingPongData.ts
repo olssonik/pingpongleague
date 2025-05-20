@@ -5,7 +5,7 @@ import { PingPongData, ApiResponse } from "@/types";
 // Real API request function that fetches from the /get_data endpoint
 const fetchPingPongData = async (): Promise<PingPongData> => {
   try {
-    const response = await fetch('/get_data');
+    const response = await fetch('/api/get_data');
     
     if (!response.ok) {
       throw new Error(`API request failed with status ${response.status}`);
@@ -22,7 +22,7 @@ const fetchPingPongData = async (): Promise<PingPongData> => {
 
 export function usePingPongData() {
   return useQuery({
-    queryKey: ['/get_data'],
+    queryKey: ['/api/get_data'],
     queryFn: fetchPingPongData,
     retry: 1,
     refetchOnWindowFocus: false,

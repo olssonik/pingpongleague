@@ -29,3 +29,7 @@ def update_elo(winner_elo, loser_elo, winner_games, loser_games):
     new_loser_elo = loser_elo + K_l * (0 - exp_lose)
 
     return new_winner_elo, new_loser_elo
+
+class EloManager:
+    def __init__(self):
+        slef.all_games

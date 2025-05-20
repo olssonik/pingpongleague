@@ -5,7 +5,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/ping-pong-data', async (req, res) => {
     try {
-      const response = await fetch('http://localhost:5000/get_data'); // your python server URL
+      const response = await fetch('/api/get_data'); // your python server URL
       if (!response.ok) throw new Error('Failed to fetch data');
       const data = await response.json();
       res.json(data);
@@ -14,9 +14,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/get_data', async (req, res) => {
+  app.get('/api/get_data', async (req, res) => {
     try {
-      const response = await fetch('http://localhost:5000/get_data');
+      const response = await fetch('/api/get_data');
       if (!response.ok) throw new Error('Failed to fetch data');
       const data = await response.json();
       res.json(data);
