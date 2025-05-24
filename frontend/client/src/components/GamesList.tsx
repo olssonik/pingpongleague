@@ -87,13 +87,7 @@ export default function GamesList({ games, isDetailed = false }: GamesListProps)
                 </td>
               )}
               <td className="px-6 py-4 whitespace-nowrap">
-                {isDetailed ? (
-                  <span className={`${game.winner === currentPlayerUsername ? "bg-success" : "bg-danger"} text-white px-2 py-1 rounded-full text-xs`}>
-                    {game.winner === currentPlayerUsername ? "Win" : "Loss"}
-                  </span>
-                ) : (
                   <span className="text-success font-medium">{game.winner}</span>
-                )}
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-slate-500">
                 {formatDate(game.date)}
