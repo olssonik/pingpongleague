@@ -1,77 +1,111 @@
-import { Player } from "@/types";
-import { Skeleton } from "@/components/ui/skeleton";
-import { getInitials } from "@/lib/utils";
+import { useState } from "react";
+import { Link } from "wouter";
+import { PlayerWithStats } from "@/lib/api";
 
 interface LeaderboardProps {
-  leaderboard: Player[] | undefined;
-  isLoading: boolean;
+  players: PlayerWithStats[];
 }
 
-const Leaderboard: React.FC<LeaderboardProps> = ({ leaderboard, isLoading }) => {
+type SortOption = "elo" | "winRate" | "gamesPlayed";
+
+export default function Leaderboard({ players }: LeaderboardProps) {
+  const [sortBy, setSortBy] = useState<SortOption>("elo");
+
+  const sortedPlayers = [...players].sort((a, b) => {
+    switch (sortBy) {
+      case "elo":
+        return b.elo - a.elo;
+      case "winRate":
+        return b.winRate - a.winRate;
+      case "gamesPlayed":
+        return b.gamesPlayed - a.gamesPlayed;
+      default:
+        return b.elo - a.elo;
+    }
+  });
+function getWinRate(wins: number, losses: number, percentage: boolean = true): string {
+  const total = wins + losses;
+  if (total === 0) return percentage ? "0.0%" : "0.0";
+  const rate = (wins / total) * 100;
+  return percentage ? `${rate.toFixed(1)}%` : rate.toFixed(1);
+}
   return (
-    <div className="bg-white rounded-xl shadow-md overflow-hidden h-full">
-      <div className="px-6 py-4 bg-slate-800 text-white">
-        <h2 className="text-xl font-bold">Leaderboard</h2>
-      </div>
-      <div className="p-4">
-        <div className="overflow-hidden">
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-500">Rank</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-slate-500">Player</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-500">ELO</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                // Loading skeleton rows
-                Array(3).fill(0).map((_, i) => (
-                  <tr key={i} className="border-b border-slate-100">
-                    <td className="px-4 py-4">
-                      <div className="flex items-center">
-                        <Skeleton className="w-6 h-6 rounded-full" />
-                      </div>
-                    </td>
-                    <td className="px-4 py-4">
-                      <Skeleton className="h-4 w-16" />
-                    </td>
-                    <td className="px-4 py-4 text-right">
-                      <Skeleton className="h-4 w-10 ml-auto" />
-                    </td>
-                  </tr>
-                ))
-              ) : leaderboard && leaderboard.length > 0 ? (
-                leaderboard.map((player, index) => (
-                  <tr key={player.username} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-4 py-4 text-sm font-medium text-slate-700">
-                      <div className="flex items-center">
-                        <span className={`w-6 h-6 rounded-full ${
-                          index === 0 
-                            ? "bg-[#22c55e]" 
-                            : "bg-slate-400"
-                        } text-white flex items-center justify-center text-xs font-bold`}>
-                          {index + 1}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-slate-700">{player.username}</td>
-                    <td className="px-4 py-4 text-sm font-semibold text-right">{player.elo}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={3} className="px-4 py-4 text-center text-sm text-slate-500">
-                    No players found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold text-slate-800"></h2>
+        <div>
+          <select
+            className="text-sm border-slate-300 rounded-md p-1"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+          >
+            <option value="elo">Sort by: ELO</option>
+            <option value="winRate">Sort by: Win Rate</option>
+            <option value="gamesPlayed">Sort by: Games Played</option>
+          </select>
         </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full">
+          <thead>
+            <tr className="bg-slate-50 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th className="px-6 py-3 rounded-tl-lg">Rank</th>
+              <th className="px-6 py-3">Player</th>
+              <th className="px-6 py-3 text-right">ELO</th>
+              <th className="px-6 py-3 text-right">Win/Loss</th>
+              <th className="px-6 py-3 text-right">Win Rate</th>
+              <th className="px-6 py-3 text-right rounded-tr-lg">Games</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-slate-200">
+            {sortedPlayers.map((player, index) => (
+              <tr
+                key={player.username}
+                className="hover:bg-slate-50 cursor-pointer"
+              >
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <Link href={`/players/${player.username}`}>
+                    <div className="flex items-center">
+                      <span
+                        className={`${index < 1 ? "bg-primary" : "bg-slate-500"} text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold`}
+                      >
+                        {index + 1}
+                      </span>
+                    </div>
+                  </Link>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <Link href={`/players/${player.username}`}>
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10 bg-primary text-white rounded-full flex items-center justify-center text-lg font-semibold">
+                        {player.username.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-slate-900">
+                          {player.username}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-lg font-mono font-semibold text-primary">
+                  {player.elo}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+                  {player.wins}/{player.losses}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right">
+  {getWinRate(player.wins, player.losses, true)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-right text-slate-700">
+                  {player.gamesPlayed}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
-};
-
-export default Leaderboard;
+}

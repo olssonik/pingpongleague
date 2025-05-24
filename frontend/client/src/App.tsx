@@ -1,33 +1,24 @@
 import { Switch, Route } from "wouter";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
+import Layout from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
 import Players from "@/pages/Players";
 import Games from "@/pages/Games";
+import Tournament from "@/pages/Tournament";
 import PlayerDetail from "@/pages/PlayerDetail";
-import Layout from "@/components/Layout";
-
-function Router() {
-  return (
-    <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/players" component={Players} />
-      <Route path="/games" component={Games} />
-      <Route path="/player/:username" component={PlayerDetail} />
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
+import NotFound from "@/pages/not-found";
 
 function App() {
   return (
-    <TooltipProvider>
-      <Toaster />
-      <Layout>
-        <Router />
-      </Layout>
-    </TooltipProvider>
+    <Layout>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/players" component={Players} />
+        <Route path="/players/:username" component={PlayerDetail} />
+        <Route path="/games" component={Games} />
+        <Route path="/tournament" component={Tournament} />
+        <Route component={NotFound} />
+      </Switch>
+    </Layout>
   );
 }
 

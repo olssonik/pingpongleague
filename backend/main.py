@@ -1,7 +1,11 @@
 from flask import Flask, jsonify
 import sqlite3
+from flask_cors import CORS
 
 app = Flask(__name__)
+
+CORS(app)
+
 K = 32
 db = "./game_database.db"
 
@@ -95,8 +99,9 @@ recalculate_all_elos()
 get_data()
 
 
+@app.route("/api/get_data", methods=["GET"])
 @app.route("/get_data", methods=["GET"])
-def trigger_recalc():
+def get_data_route():
     obj = get_data()
     return jsonify(obj), 200
 
