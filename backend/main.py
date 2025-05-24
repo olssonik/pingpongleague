@@ -16,6 +16,14 @@ def update_elo(winner_elo, loser_elo):
     return (winner_elo + K * (1 - exp_win), loser_elo + K * (0 - exp_lose))
 
 
+def get_k(username, cursor):
+    cursor.execute(
+        "SELECT COUNT(*) FROM games WHERE p1 = ? OR p2 = ?", (username, username)
+    )
+    count = cursor.fetchone()[0]
+    return 16 if count > 30 else 32
+
+
 def recalculate_all_elos():
     conn = sqlite3.connect(db)
     cursor = conn.cursor()
@@ -29,16 +37,24 @@ def recalculate_all_elos():
         cursor.execute("SELECT ELO FROM players WHERE username = ?", (p2,))
         p2_elo = cursor.fetchone()[0]
 
+        k1 = get_k(p1, cursor)
+        k2 = get_k(p2, cursor)
+
+        exp_p1 = expected(p1_elo, p2_elo)
+        exp_p2 = expected(p2_elo, p1_elo)
+
         if winner == p1:
-            new_p1, new_p2 = update_elo(p1_elo, p2_elo)
+            p1_elo += k1 * (1 - exp_p1)
+            p2_elo += k2 * (0 - exp_p2)
         else:
-            new_p2, new_p1 = update_elo(p2_elo, p1_elo)
+            p1_elo += k1 * (0 - exp_p1)
+            p2_elo += k2 * (1 - exp_p2)
 
         cursor.execute(
-            "UPDATE players SET ELO = ? WHERE username = ?", (round(new_p1), p1)
+            "UPDATE players SET ELO = ? WHERE username = ?", (round(p1_elo), p1)
         )
         cursor.execute(
-            "UPDATE players SET ELO = ? WHERE username = ?", (round(new_p2), p2)
+            "UPDATE players SET ELO = ? WHERE username = ?", (round(p2_elo), p2)
         )
 
     conn.commit()
