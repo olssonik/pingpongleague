@@ -1,4 +1,5 @@
 from flask import Flask, jsonify
+import json
 import sqlite3
 from flask_cors import CORS
 
@@ -106,6 +107,7 @@ def get_data_route():
     return jsonify(obj), 200
 
 
+@app.route("/get_tournaments", methods=["GET"])
 @app.route("/api/get_tournaments", methods=["GET"])
 def get_tournaments():
     conn = sqlite3.connect(db)
@@ -119,6 +121,55 @@ def get_tournaments():
         for row in rows
     ]
     return jsonify({"tournaments": tournaments}), 200
+
+
+@app.route("/tournament/<int:tournament_id>", methods=["GET"])
+@app.route("/api/tournament/<int:tournament_id>", methods=["GET"])
+def get_tournament(tournament_id):
+    conn = sqlite3.connect(db)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT name, active, winner, finished FROM tournaments WHERE id = ?",
+        (tournament_id,),
+    )
+    tournament_row = cursor.fetchone()
+
+    if not tournament_row:
+        conn.close()
+        return jsonify({"error": "Tournament not found"}), 404
+
+    active, finished = tournament_row[1], tournament_row[3]
+    if not active and not finished:
+        conn.close()
+        return jsonify({"message": "Tournament has not started yet"})
+
+    # Get all games grouped by round, ordered by round and id (to keep order)
+    cursor.execute(
+        """
+        SELECT player_one, player_two, winner, finished, round
+        FROM tournament_games
+        WHERE tournament_id = ?
+        ORDER BY round ASC, id ASC
+        """,
+        (tournament_id,),
+    )
+    games = cursor.fetchall()
+
+    # Group games by round
+    rounds = {}
+    for game in games:
+        player_one, player_two, winner, finished, round_num = game
+        rounds.setdefault(round_num, []).append(
+            [player_one, player_two, winner, finished]
+        )
+
+    conn.close()
+
+    # Convert dict to list sorted by round number
+    rounds_list = [rounds[round_num] for round_num in sorted(rounds.keys())]
+
+    return jsonify({"rounds": rounds_list}), 200
 
 
 if __name__ == "__main__":

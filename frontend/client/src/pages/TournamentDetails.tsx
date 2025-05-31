@@ -1,61 +1,68 @@
 import { useEffect, useState } from "react";
 import { useParams } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
 
-export function TournamentsDetails() {
-  const { id } = useParams<{ id: string }>();
-  const [tournament, setTournament] = useState<{
-    id: number;
-    name: string;
-    active: boolean;
-    winner: string | null;
-  } | null>(null);
-  const { toast } = useToast();
+export default function TournamentDetails() {
+  const { id } = useParams();
+  const [rounds, setRounds] = useState([]);
+  const [error, setError] = useState("");
+  const [display, setDisplay] = useState("");
 
   useEffect(() => {
-    const fetchTournament = async () => {
-      try {
-        const res = await fetch(`http://localhost:3000/api/get_tournaments`);
-        const data = await res.json();
-        const found = data.tournaments.find((t) => String(t.id) === id);
-        if (found) {
-          setTournament(found);
-        } else {
-          toast({
-            title: "Tournament not found",
-            description: `No tournament found with id ${id}`,
-            variant: "destructive",
-          });
-        }
-      } catch {
-        toast({
-          title: "Error",
-          description: "Failed to load tournament data.",
-          variant: "destructive",
-        });
-      }
-    };
-
-    fetchTournament();
+    fetch(`http://localhost:3000/api/tournament/${id}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Fetch failed");
+        return res.json();
+      })
+      .then((json) => {
+        if (json.rounds) setRounds(json.rounds);
+        else if (json.message) setDisplay(json.message);
+      })
+      .catch((e) => setError(e.message));
   }, [id]);
 
-  if (!tournament) return (<>
-    <div><p>HELLOO</p></div>
-  </>);
+  if (error) return <div>Error: {error}</div>;
+  if (display) return <div>{display}</div>;
+  if (!rounds.length) return <div>Loading tournament...</div>;
 
   return (
-    <Card className="bg-white rounded-lg shadow-md mt-8">
-      <CardContent className="p-6">
-        <h2 className="text-3xl font-bold mb-4">
-          {tournament.name || "Untitled Tournament"}
-        </h2>
-        <p className="mb-2">ID: {tournament.id}</p>
-        <p className="mb-2">Active: {tournament.active ? "Yes" : "No"}</p>
-        <p className="mb-2">
-          Winner: {tournament.winner ? tournament.winner : "TBD"}
-        </p>
-      </CardContent>
-    </Card>
+    <div style={{ maxWidth: 600, margin: "auto" }}>
+      <h2>Tournament Rounds</h2>
+      {rounds.map((round, roundIdx) => (
+        <div key={roundIdx} style={{ marginBottom: 24 }}>
+          <h3>Round {roundIdx + 1}</h3>
+          {round.map(([p1, p2, winner], matchIdx) => (
+            <div
+              key={matchIdx}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 10,
+                padding: 10,
+                border: "1px solid #ccc",
+                borderRadius: 6,
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: winner === p1 ? "bold" : "normal",
+                  color: winner === p1 ? "green" : "black",
+                }}
+              >
+                {p1}
+              </div>
+              <span>vs</span>
+              <div
+                style={{
+                  fontWeight: winner === p2 ? "bold" : "normal",
+                  color: winner === p2 ? "green" : "black",
+                }}
+              >
+                {p2}
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
   );
 }
