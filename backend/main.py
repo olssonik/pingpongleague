@@ -106,5 +106,20 @@ def get_data_route():
     return jsonify(obj), 200
 
 
+@app.route("/api/get_tournaments", methods=["GET"])
+def get_tournaments():
+    conn = sqlite3.connect(db)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, active, winner FROM tournaments")
+    rows = cursor.fetchall()
+    conn.close()
+
+    tournaments = [
+        {"id": row[0], "name": row[1], "active": bool(row[2]), "winner": row[3]}
+        for row in rows
+    ]
+    return jsonify({"tournaments": tournaments}), 200
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=3000)
