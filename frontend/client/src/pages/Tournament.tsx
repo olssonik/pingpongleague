@@ -12,7 +12,7 @@ export default function Tournament() {
 
   const fetchTournaments = async () => {
     try {
-      const res = await fetch("http://localhost:3000/api/get_tournaments");
+      const res = await fetch("/api/get_tournaments");
       if (!res.ok) throw new Error("Failed to fetch tournaments");
       const data = await res.json();
 

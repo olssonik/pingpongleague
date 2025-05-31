@@ -8,7 +8,7 @@ export default function TournamentDetails() {
   const [display, setDisplay] = useState("");
 
   useEffect(() => {
-    fetch(`http://localhost:3000/api/tournament/${id}`)
+    fetch(`/api/tournament/${id}`)
       .then((res) => {
         if (!res.ok) throw new Error("Fetch failed");
         return res.json();
