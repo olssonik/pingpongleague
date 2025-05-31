@@ -6,6 +6,7 @@ import Games from "@/pages/Games";
 import Tournament from "@/pages/Tournament";
 import PlayerDetail from "@/pages/PlayerDetail";
 import NotFound from "@/pages/not-found";
+import TournamentsDetails from "@/pages/TournamentDetails";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/players/:username" component={PlayerDetail} />
         <Route path="/games" component={Games} />
         <Route path="/tournament" component={Tournament} />
+        <Route path="/tournaments/:id" component={TournamentsDetails} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
