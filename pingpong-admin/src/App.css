@@ -1,0 +1,159 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f7f6;
+    color: #333;
+    line-height: 1.6;
+    padding: 20px;
+}
+/* Add this to your App.css file */
+textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-family: inherit; /* Use the same font as other elements */
+    font-size: 14px;
+    resize: vertical; /* Allow vertical resizing */
+}
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+h1, h2 {
+    color: #0056b3;
+    border-bottom: 2px solid #eef;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.admin-section {
+    margin-bottom: 40px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+input[type="number"],
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+tr:hover {
+    background-color: #f9f9f9;
+}
+
+.edit-button {
+    background-color: #28a745;
+}
+
+.edit-button:hover {
+    background-color: #218838;
+}/* Add this to your App.css file */
+.form-group-inline {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.form-group-inline input[type="checkbox"] {
+    width: auto; /* Override default width */
+    margin-right: 10px;
+}
+
+.form-group-inline label {
+    margin-bottom: 0; /* Override default margin */
+    font-weight: normal;
+}/* Add to your App.css file */
+
+.add-to-queue-button {
+  background-color: #17a2b8; /* A nice teal color */
+}
+.add-to-queue-button:hover {
+  background-color: #138496;
+}
+
+.submit-all-button {
+  background-color: #28a745; /* Green for go! */
+  color: white;
+  padding: 12px 25px;
+  font-size: 18px;
+  width: 100%;
+  margin-top: 20px;
+}
+.submit-all-button:hover {
+  background-color: #218838;
+}
+
+.remove-button {
+  background-color: #dc3545; /* Red for remove */
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.remove-button:hover {
+  background-color: #c82333;
+}
+
+strong {
+    font-weight: bold;
+}/* Add to your App.css file */
+.delete-button {
+  background-color: #dc3545; /* A standard danger red */
+}
+
+.delete-button:hover {
+  background-color: #c82333;
+}
+
+.actions-cell {
+    display: flex;
+    gap: 8px; /* Adds space between buttons */
+}

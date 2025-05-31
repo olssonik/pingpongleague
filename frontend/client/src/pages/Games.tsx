@@ -37,36 +37,37 @@ export default function Games() {
   }
 
   const { games, players } = data;
-  
+
   // Filter games based on search term and player filter
   const filteredGames = games.filter((game: Game) => {
-    const matchesSearch = 
+    const matchesSearch =
       game.id.toString().includes(searchTerm) ||
       game.players.some(player => player.toLowerCase().includes(searchTerm.toLowerCase())) ||
       game.winner.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesPlayer = playerFilter === "all" || 
+
+    const matchesPlayer = playerFilter === "all" ||
       game.players.includes(playerFilter);
-    
+
     return matchesSearch && matchesPlayer;
   });
-  
+
   // Sort games based on selected option
   const sortedGames = [...filteredGames].sort((a: Game, b: Game) => {
     const idA = typeof a.id === 'number' ? a.id : parseInt(a.id);
     const idB = typeof b.id === 'number' ? b.id : parseInt(b.id);
     return sortOrder === "latest" ? idB - idA : idA - idB;
   });
-  
+
   // Paginate games
   const indexOfLastGame = currentPage * gamesPerPage;
   const indexOfFirstGame = indexOfLastGame - gamesPerPage;
   const currentGames = sortedGames.slice(indexOfFirstGame, indexOfLastGame);
-  
+
   // Format date for display
-  const formatDate = (date: string | null) => {
-    if (!date) return "Today";
-    return new Date(date).toLocaleDateString();
+  const formatDate = (date: number | null) => { // Type is now 'number'
+    if (!date) return "No Date";
+    // Multiply by 1000 to convert from seconds to milliseconds
+    return new Date(date * 1000).toLocaleDateString("en-GB");
   };
 
   return (
