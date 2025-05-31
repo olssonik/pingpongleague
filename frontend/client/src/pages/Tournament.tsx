@@ -43,11 +43,10 @@ export default function Tournament() {
       <CardContent className="p-6 text-center">
         <div className="py-12">
           <h2 className="text-3xl font-bold text-slate-800 mb-4">
-            Tournaments Coming Soon!
+            Upcoming OBC Tournaments
           </h2>
           <p className="text-slate-600 max-w-lg mx-auto mb-8">
-            We're working on bringing exciting tournaments to the OBC Table
-            Tennis League. Stay tuned for updates and get ready to compete!
+            Check out the schedule and sign up to show your skills. Don’t miss out on the action!
           </p>
 
           {tournaments.length > 0 && (
