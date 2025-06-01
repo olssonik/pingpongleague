@@ -33,7 +33,6 @@ export default function NavBar() {
             <h1 className="text-2xl font-bold text-slate-800">
               OBC Table Tennis League
             </h1>
-<h3 className="ml-4 text-slate-600">End of season 1! 5th June 2025</h3>
           </div>
 
           <nav className="w-full md:w-auto">

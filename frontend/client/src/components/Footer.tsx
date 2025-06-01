@@ -27,7 +27,7 @@ export default function Footer() {
             </div>
           </div>
           <div className="text-sm text-center md:text-right">
-            <p>{new Date().getFullYear()} OBC Table Tennis League.</p>
+            <p>&copy; {new Date().getFullYear()} OBC Table Tennis League. All rights reserved.</p>
             <p className="mt-1">A project for table tennis enthusiasts.</p>
           </div>
         </div>

@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams } from "wouter";
 
+type Match = [string, string, string]; // [player1, player2, winner]
+type Round = Match[];
+
 export default function TournamentDetails() {
   const { id } = useParams();
-  const [rounds, setRounds] = useState([]);
+  const [rounds, setRounds] = useState<Round[]>([]);
   const [error, setError] = useState("");
   const [display, setDisplay] = useState("");
 
@@ -30,7 +33,7 @@ export default function TournamentDetails() {
       {rounds.map((round, roundIdx) => (
         <div key={roundIdx} style={{ marginBottom: 24 }}>
           <h3>Round {roundIdx + 1}</h3>
-          {round.map(([p1, p2, winner], matchIdx) => (
+          {round.map(([p1, p2, winner]: Match, matchIdx: number) => (
             <div
               key={matchIdx}
               style={{

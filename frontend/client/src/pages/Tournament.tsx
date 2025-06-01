@@ -46,7 +46,7 @@ export default function Tournament() {
             Upcoming OBC Tournaments
           </h2>
           <p className="text-slate-600 max-w-lg mx-auto mb-8">
-            Check out the schedule and sign up to show your skills. Don’t miss out on the action!
+            Check out the schedule and sign up to show your skills. Don't miss out on the action!
           </p>
 
           {tournaments.length > 0 && (

@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PlayerWithStats, Game } from "@/lib/api";
 import PlayerStats from "./PlayerStats";
 import GamesList from "./GamesList";
+import PlayerBadges from "./PlayerBadges";
 
 interface PlayerProfileProps {
   player: PlayerWithStats;
@@ -48,6 +49,11 @@ export default function PlayerProfile({ player, playerGames, otherPlayers }: Pla
             <div className="text-slate-500">
               Rank #{player.rank} • ELO: <span className="font-mono font-semibold text-primary">{player.elo}</span>
             </div>
+            {player.achievements && player.achievements.length > 0 && (
+              <div className="mt-3">
+                <PlayerBadges achievements={player.achievements} size="large" />
+              </div>
+            )}
           </div>
         </div>
         

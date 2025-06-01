@@ -1,8 +1,16 @@
 // API interfaces for type safety
 
+export interface Achievement {
+  badge_id: string;
+  name: string;
+  description: string;
+  icon_url: string;
+}
+
 export interface Player {
   username: string;
   elo: number;
+  achievements?: Achievement[];
 }
 
 export interface Game {
@@ -18,11 +26,12 @@ export interface PlayerWithStats extends Player {
   winRate: number;
   gamesPlayed: number;
   rank: number;
+  achievements?: Achievement[];
 }
 
 export interface APIResponse {
   games: Game[];
-  players: Player[];
+  players: Player[] | Record<string, Player>;
 }
 
 export const fetchData = async (): Promise<APIResponse> => {

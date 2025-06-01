@@ -6,8 +6,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function calculatePlayerStats(players: Player[], games: Game[]): PlayerWithStats[] {
-  return players.map(player => {
+export function calculatePlayerStats(players: Player[] | Record<string, Player>, games: Game[]): PlayerWithStats[] {
+  // Handle both array and object formats from the backend
+  const playersArray = Array.isArray(players) 
+    ? players 
+    : Object.values(players);
+    
+  return playersArray.map(player => {
     const playerGames = games.filter(game => game.players.includes(player.username));
     const wins = games.filter(game => game.winner === player.username).length;
     const losses = playerGames.length - wins;
@@ -20,6 +25,7 @@ export function calculatePlayerStats(players: Player[], games: Game[]): PlayerWi
       winRate,
       gamesPlayed: playerGames.length,
       rank: 0, // Will be set after sorting
+      achievements: player.achievements || [],
     };
   })
   .sort((a, b) => b.elo - a.elo)

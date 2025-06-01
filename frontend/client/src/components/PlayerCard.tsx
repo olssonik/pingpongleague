@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import { Player } from "@/lib/api";
+import PlayerBadges from "./PlayerBadges";
 
 interface PlayerCardProps {
   player: Player;
@@ -24,6 +25,9 @@ export default function PlayerCard({ player, rank, wins, losses, games }: Player
             <div className="ml-3">
               <h3 className="font-semibold text-slate-800">{player.username}</h3>
               <div className="text-xs text-slate-500">Rank #{rank}</div>
+              <div className="mt-1">
+                <PlayerBadges achievements={player.achievements || []} size="small" maxDisplay={2} />
+              </div>
             </div>
           </div>
           <div className="text-2xl font-mono font-bold text-primary">{player.elo}</div>

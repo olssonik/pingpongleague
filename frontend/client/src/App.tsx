@@ -6,7 +6,7 @@ import Games from "@/pages/Games";
 import Tournament from "@/pages/Tournament";
 import PlayerDetail from "@/pages/PlayerDetail";
 import NotFound from "@/pages/not-found";
-import TournamentDetails from "@/pages/TournamentDetails.tsx";
+import TournamentDetails from "@/pages/TournamentDetails";
 
 function App() {
   return (
