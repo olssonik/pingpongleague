@@ -5,7 +5,8 @@ import "./App.css"; // Ensure this file contains all necessary styles, including
 const API_URL = "http://localhost:3000";
 
 // --- Edit Modal Component ---
-const GameEditModal = ({ game, players, onClose, onSave }) => {
+const GameEditModal = ({ game, players, onClose, onSave, isApiInProgress }) => {
+  // Added isApiInProgress prop
   // State for the form fields within the modal, initialized with the game being edited
   const [updatedP1, setUpdatedP1] = useState(game.players[0]);
   const [updatedP2, setUpdatedP2] = useState(game.players[1]);
@@ -13,7 +14,7 @@ const GameEditModal = ({ game, players, onClose, onSave }) => {
   const [updatedSeason, setUpdatedSeason] = useState(String(game.season || "")); // Ensure season is a string for input
 
   useEffect(() => {
-    // Update modal form if the game prop changes (e.g., if user clicks edit on another game while modal is somehow still open)
+    // Update modal form if the game prop changes
     setUpdatedP1(game.players[0]);
     setUpdatedP2(game.players[1]);
     setUpdatedWinner(game.winner);
@@ -41,12 +42,11 @@ const GameEditModal = ({ game, players, onClose, onSave }) => {
     }
 
     onSave({
-      id: game.id, // Make sure to pass the game ID
+      id: game.id,
       p1: updatedP1,
       p2: updatedP2,
       winner: updatedWinner,
       season: seasonNumber,
-      // date is not editable in this form, backend keeps original or it's not relevant for update
     });
   };
 
@@ -62,6 +62,7 @@ const GameEditModal = ({ game, players, onClose, onSave }) => {
               value={updatedP1}
               onChange={(e) => setUpdatedP1(e.target.value)}
               required
+              disabled={isApiInProgress}
             >
               <option value="">Select Player 1</option>
               {players.map((p) => (
@@ -81,6 +82,7 @@ const GameEditModal = ({ game, players, onClose, onSave }) => {
               value={updatedP2}
               onChange={(e) => setUpdatedP2(e.target.value)}
               required
+              disabled={isApiInProgress}
             >
               <option value="">Select Player 2</option>
               {players.map((p) => (
@@ -100,9 +102,9 @@ const GameEditModal = ({ game, players, onClose, onSave }) => {
               value={updatedWinner}
               onChange={(e) => setUpdatedWinner(e.target.value)}
               required
+              disabled={isApiInProgress}
             >
               <option value="">Select Winner</option>
-              {/* Ensure options are available even if p1/p2 change */}
               {[updatedP1, updatedP2].filter(Boolean).map((pName) => (
                 <option key={`${pName}-edit-winner-${game.id}`} value={pName}>
                   {pName}
@@ -120,13 +122,23 @@ const GameEditModal = ({ game, players, onClose, onSave }) => {
               placeholder="Enter season number"
               required
               min="1"
+              disabled={isApiInProgress}
             />
           </div>
           <div className="modal-actions">
-            <button type="submit" className="save-button">
-              Save Changes
+            <button
+              type="submit"
+              className="save-button"
+              disabled={isApiInProgress}
+            >
+              {isApiInProgress ? "Saving..." : "Save Changes"}
             </button>
-            <button type="button" onClick={onClose} className="cancel-button">
+            <button
+              type="button"
+              onClick={onClose}
+              className="cancel-button"
+              disabled={isApiInProgress}
+            >
               Cancel
             </button>
           </div>
@@ -140,14 +152,15 @@ const GameEditModal = ({ game, players, onClose, onSave }) => {
 function AdminPage() {
   const [players, setPlayers] = useState([]);
   const [games, setGames] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // For initial data load
+  const [isApiInProgress, setIsApiInProgress] = useState(false); // NEW: For disabling buttons during API calls
 
   // State for multi-game queue
   const [stagedGames, setStagedGames] = useState([]);
   const [p1, setP1] = useState("");
   const [p2, setP2] = useState("");
   const [winner, setWinner] = useState("");
-  const [gameSeason, setGameSeason] = useState("");
+  const [gameSeason, setGameSeason] = useState("1");
   const [useCurrentTimeForBatch, setUseCurrentTimeForBatch] = useState(true);
 
   // State for "Add Player" form
@@ -156,21 +169,23 @@ function AdminPage() {
   const [newAchievements, setNewAchievements] = useState("");
   const [newPlayerElo, setNewPlayerElo] = useState("400");
 
-  // --- State for Edit Modal ---
+  // State for Edit Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [gameToEdit, setGameToEdit] = useState(null);
 
   const fetchData = async () => {
-    setLoading(true);
+    setLoading(true); // This is for the initial page load or full refresh
+    // setIsApiInProgress(true); // Not for fetchData, as it's a GET and might run in background
     try {
       const response = await axios.get(`${API_URL}/get_data`);
       setPlayers(response.data.players || []);
-      setGames((response.data.games || []).sort((a, b) => b.id - a.id)); // Display newest first
+      setGames((response.data.games || []).sort((a, b) => b.id - a.id));
     } catch (error) {
       console.error("Error fetching data:", error);
       alert("Could not fetch data from the server.");
     } finally {
       setLoading(false);
+      // setIsApiInProgress(false); // Not for fetchData
     }
   };
 
@@ -180,20 +195,21 @@ function AdminPage() {
 
   // --- Edit Game Handlers ---
   const handleOpenEditModal = (game) => {
+    if (isApiInProgress) return; // Don't open modal if another API call is running
     setGameToEdit(game);
     setIsEditModalOpen(true);
   };
 
   const handleCloseEditModal = () => {
+    if (isApiInProgress) return; // Prevent closing if API call from modal is running (though save button would be disabled)
     setIsEditModalOpen(false);
     setGameToEdit(null);
   };
 
   const handleSaveGameChanges = async (updatedGameData) => {
-    if (!gameToEdit) return;
-
+    if (!gameToEdit || isApiInProgress) return;
+    setIsApiInProgress(true);
     try {
-      // The backend expects p1, p2, winner, season directly in the body
       const payload = {
         p1: updatedGameData.p1,
         p2: updatedGameData.p2,
@@ -204,35 +220,37 @@ function AdminPage() {
       alert(
         `Game #${gameToEdit.id} updated successfully. ELOs will be recalculated.`,
       );
-      handleCloseEditModal();
-      fetchData(); // Refresh all data
+      handleCloseEditModal(); // Close modal first
+      fetchData(); // Then refresh data
     } catch (error) {
       console.error(`Error updating game #${gameToEdit.id}:`, error);
       alert(
-        `Failed to update game. Server says: ${
-          error.response?.data?.error || "Unknown error"
-        }`,
+        `Failed to update game. Server says: ${error.response?.data?.error || "Unknown error"}`,
       );
+    } finally {
+      setIsApiInProgress(false);
     }
   };
 
   // --- Delete Game Handler ---
   const handleDeleteGame = async (gameId) => {
+    if (isApiInProgress) return;
     const isConfirmed = window.confirm(
       `Are you sure you want to PERMANENTLY DELETE Game #${gameId}? This action cannot be undone and will trigger a full ELO recalculation.`,
     );
     if (isConfirmed) {
+      setIsApiInProgress(true);
       try {
-        await axios.delete(`${API_URL}/api/game/${gameId}`); // Ensure backend handles hard delete
+        await axios.delete(`${API_URL}/api/game/${gameId}`);
         alert(`Game #${gameId} permanently deleted. ELOs have been updated.`);
         fetchData();
       } catch (error) {
         console.error(`Error deleting game #${gameId}:`, error);
         alert(
-          `Failed to delete game. Server says: ${
-            error.response?.data?.error || "Unknown error"
-          }`,
+          `Failed to delete game. Server says: ${error.response?.data?.error || "Unknown error"}`,
         );
+      } finally {
+        setIsApiInProgress(false);
       }
     }
   };
@@ -240,6 +258,7 @@ function AdminPage() {
   // --- Add Player Handler ---
   const handleAddPlayer = async (e) => {
     e.preventDefault();
+    if (isApiInProgress) return;
     if (!newUsername.trim()) {
       alert("Username is required.");
       return;
@@ -249,7 +268,7 @@ function AdminPage() {
       alert("Please enter a valid number for starting ELO.");
       return;
     }
-
+    setIsApiInProgress(true);
     const newPlayer = {
       username: newUsername.trim(),
       description: newDescription.trim(),
@@ -269,16 +288,17 @@ function AdminPage() {
     } catch (error) {
       console.error("Error adding player:", error);
       alert(
-        `Failed to add player. Server says: ${
-          error.response?.data?.error || "Unknown error"
-        }`,
+        `Failed to add player. Server says: ${error.response?.data?.error || "Unknown error"}`,
       );
+    } finally {
+      setIsApiInProgress(false);
     }
   };
 
-  // --- Add Game to Queue Handler ---
+  // --- Add Game to Queue Handler (Local state change, not an API call) ---
   const handleAddGameToQueue = (e) => {
     e.preventDefault();
+    if (isApiInProgress) return; // Prevent queue modification during other API calls
     if (!p1 || !p2 || !winner || !gameSeason) {
       alert(
         "Please fill out all fields for the game (Player 1, Player 2, Winner, Season).",
@@ -299,19 +319,21 @@ function AdminPage() {
     setP1("");
     setP2("");
     setWinner("");
-    // gameSeason is intentionally not cleared here, user might want to add multiple games for the same season
   };
 
   const handleRemoveFromQueue = (indexToRemove) => {
+    if (isApiInProgress) return; // Prevent queue modification during other API calls
     setStagedGames(stagedGames.filter((_, index) => index !== indexToRemove));
   };
 
   // --- Submit All Staged Games Handler ---
   const handleSubmitAllGames = async () => {
+    if (isApiInProgress) return;
     if (stagedGames.length === 0) {
       alert("No games in the queue to submit.");
       return;
     }
+    setIsApiInProgress(true);
     try {
       await axios.post(`${API_URL}/add_multiple_games`, {
         games: stagedGames,
@@ -319,15 +341,15 @@ function AdminPage() {
       });
       alert(`Successfully added ${stagedGames.length} games!`);
       setStagedGames([]);
-      setGameSeason(""); // Clear season after batch submission
+      setGameSeason("");
       fetchData();
     } catch (error) {
       console.error("Error adding multiple games:", error);
       alert(
-        `Failed to add games. Server says: ${
-          error.response?.data?.error || "Unknown error"
-        }`,
+        `Failed to add games. Server says: ${error.response?.data?.error || "Unknown error"}`,
       );
+    } finally {
+      setIsApiInProgress(false);
     }
   };
 
@@ -356,6 +378,7 @@ function AdminPage() {
               onChange={(e) => setNewUsername(e.target.value)}
               placeholder="Enter unique username"
               required
+              disabled={isApiInProgress}
             />
           </div>
           <div className="form-group">
@@ -368,6 +391,7 @@ function AdminPage() {
               placeholder="e.g., 400"
               required
               min="0"
+              disabled={isApiInProgress}
             />
           </div>
           <div className="form-group">
@@ -378,6 +402,7 @@ function AdminPage() {
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
               placeholder="e.g., Right-handed attacker"
+              disabled={isApiInProgress}
             />
           </div>
           <div className="form-group">
@@ -388,9 +413,12 @@ function AdminPage() {
               onChange={(e) => setNewAchievements(e.target.value)}
               placeholder="e.g., Season 1 Champion"
               rows="3"
+              disabled={isApiInProgress}
             ></textarea>
           </div>
-          <button type="submit">Add Player</button>
+          <button type="submit" disabled={isApiInProgress}>
+            {isApiInProgress ? "Processing..." : "Add Player"}
+          </button>
         </form>
       </div>
 
@@ -408,11 +436,17 @@ function AdminPage() {
               placeholder="Enter season number"
               required
               min="1"
+              disabled={isApiInProgress}
             />
           </div>
           <div className="form-group">
             <label>Player 1</label>
-            <select value={p1} onChange={(e) => setP1(e.target.value)} required>
+            <select
+              value={p1}
+              onChange={(e) => setP1(e.target.value)}
+              required
+              disabled={isApiInProgress}
+            >
               <option value="">Select Player 1</option>
               {players.map((p) => (
                 <option key={p.username + "-p1-queue"} value={p.username}>
@@ -423,7 +457,12 @@ function AdminPage() {
           </div>
           <div className="form-group">
             <label>Player 2</label>
-            <select value={p2} onChange={(e) => setP2(e.target.value)} required>
+            <select
+              value={p2}
+              onChange={(e) => setP2(e.target.value)}
+              required
+              disabled={isApiInProgress}
+            >
               <option value="">Select Player 2</option>
               {players.map((p) => (
                 <option key={p.username + "-p2-queue"} value={p.username}>
@@ -438,14 +477,19 @@ function AdminPage() {
               value={winner}
               onChange={(e) => setWinner(e.target.value)}
               required
+              disabled={isApiInProgress}
             >
               <option value="">Select Winner</option>
               {p1 && <option value={p1}>{p1}</option>}
               {p2 && <option value={p2}>{p2}</option>}
             </select>
           </div>
-          <button type="submit" className="add-to-queue-button">
-            Add Game to Queue
+          <button
+            type="submit"
+            className="add-to-queue-button"
+            disabled={isApiInProgress}
+          >
+            {isApiInProgress ? "Processing..." : "Add Game to Queue"}
           </button>
         </form>
       </div>
@@ -460,6 +504,7 @@ function AdminPage() {
               id="useCurrentTimeForBatch"
               checked={useCurrentTimeForBatch}
               onChange={(e) => setUseCurrentTimeForBatch(e.target.checked)}
+              disabled={isApiInProgress}
             />
             <label htmlFor="useCurrentTimeForBatch">
               Add Current Timestamp to All Games in Batch
@@ -490,6 +535,7 @@ function AdminPage() {
                     <button
                       onClick={() => handleRemoveFromQueue(index)}
                       className="remove-button"
+                      disabled={isApiInProgress}
                     >
                       Remove
                     </button>
@@ -498,8 +544,12 @@ function AdminPage() {
               ))}
             </tbody>
           </table>
-          <button onClick={handleSubmitAllGames} className="submit-all-button">
-            Submit All Queued Games
+          <button
+            onClick={handleSubmitAllGames}
+            className="submit-all-button"
+            disabled={isApiInProgress || stagedGames.length === 0}
+          >
+            {isApiInProgress ? "Submitting..." : "Submit All Queued Games"}
           </button>
         </div>
       )}
@@ -509,7 +559,7 @@ function AdminPage() {
         <h2>
           Recent Games (Showing latest first - {games.length} games total)
         </h2>
-        {games.length === 0 && <p>No non-archived games found.</p>}
+        {games.length === 0 && !loading && <p>No non-archived games found.</p>}
         <table>
           <thead>
             <tr>
@@ -537,12 +587,14 @@ function AdminPage() {
                   <button
                     className="edit-button"
                     onClick={() => handleOpenEditModal(game)}
+                    disabled={isApiInProgress}
                   >
                     Edit
                   </button>
                   <button
                     className="delete-button"
                     onClick={() => handleDeleteGame(game.id)}
+                    disabled={isApiInProgress}
                   >
                     Delete
                   </button>
@@ -560,6 +612,7 @@ function AdminPage() {
           players={players}
           onClose={handleCloseEditModal}
           onSave={handleSaveGameChanges}
+          isApiInProgress={isApiInProgress} // Pass state to modal
         />
       )}
     </div>
