@@ -149,12 +149,17 @@ def get_data():
     cursor.execute("SELECT username, ELO, description, achievements FROM players")
     all_players_rows = cursor.fetchall()
     for username_val, elo_val, desc_val, achieve_val in all_players_rows:
+        try:
+            achievements_parsed = json.loads(achieve_val)
+        except Exception:
+            achievements_parsed = []  # fallback if it's malformed
+
         players_list.append(
             {
                 "username": username_val,
                 "elo": elo_val,
                 "description": desc_val,
-                "achievements": achieve_val,
+                "achievements": achievements_parsed,
             }
         )
 
