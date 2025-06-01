@@ -1,3 +1,4 @@
+import re
 from flask import Flask, jsonify, request
 import json  # Kept as per user's original imports
 import sqlite3
@@ -590,6 +591,10 @@ def get_tournament(tournament_id):
     if not tournament_row:
         conn.close()
         return jsonify({"error": "Tournament not found"}), 404
+
+    if not tournament_row[1] and not tournament_row[3]:
+        conn.close()
+        return jsonify({"message": "Tournament has not started yet"})
 
     cursor.execute(
         "SELECT player_one, player_two, winner, finished, round FROM tournament_games WHERE tournament_id = ? ORDER BY round ASC, id ASC",
