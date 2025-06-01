@@ -20,15 +20,15 @@ const sampleData = {
       username: "Oli", 
       elo: 531,
       achievements: [
-        { badge_id: "mvp_2024", name: "MVP 2024", description: "Most Valuable Player of 2024", icon_url: "🏆" },
-        { badge_id: "winning_streak", name: "Winning Streak", description: "Won 5 games in a row", icon_url: "🔥" }
+        { badge_id: "mvp_2024", name: "MVP 2024", description: "Most Valuable Player of 2024", icon_url: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/svgs/solid/trophy.svg" },
+        { badge_id: "winning_streak", name: "Winning Streak", description: "Won 5 games in a row", icon_url: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/svgs/solid/fire.svg" }
       ]
     },
     "1": {
       username: "Jack", 
       elo: 347,
       achievements: [
-        { badge_id: "sportsmanship", name: "Sportsmanship", description: "Great attitude and fair play", icon_url: "⭐" }
+        { badge_id: "sportsmanship", name: "SPORTSMANSHIP FOR JACK", description: "Survived a season full of luck and unskilled players", icon_url: "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/svgs/solid/award.svg" }
       ]
     },
     "2": {
