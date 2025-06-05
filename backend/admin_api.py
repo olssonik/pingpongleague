@@ -106,38 +106,52 @@ def get_k(username, cursor):
 
 # --- REVERTED Recalculate All ELOs Function (to match user's provided logic) ---
 def recalculate_all_elos():
-    print("Recalculating all ELOs using user's specified sequential update logic...")
+    print("Recalculating all ELOs using locked K-factor logic...")
     conn = None
     try:
         conn = sqlite3.connect(db)
         cursor = conn.cursor()
+
+        # Reset all player ELOs to the default before recalculating
         cursor.execute("UPDATE players SET ELO = ?", (DEFAULT_ELO,))
-        cursor.execute(
-            "SELECT p1, p2, winner FROM games ORDER BY id ASC"
-        )  # User's original logic for this func
+
+        # Fetch all games in chronological order
+        cursor.execute("SELECT p1, p2, winner FROM games ORDER BY id ASC")
         all_games = cursor.fetchall()
 
         if not all_games:
-            print("No games found to recalculate ELOs. Player ELOs reset to default.")
+            print("No games found. ELOs reset to default.")
             conn.commit()
-            conn.close()
             return
 
-        for p1_name, p2_name, winner_name in all_games:
-            cursor.execute("SELECT ELO FROM players WHERE username = ?", (p1_name,))
-            p1_elo_row = cursor.fetchone()
-            cursor.execute("SELECT ELO FROM players WHERE username = ?", (p2_name,))
-            p2_elo_row = cursor.fetchone()
+        game_counts = {}  # Track number of games played per user so far
 
-            if not p1_elo_row or not p2_elo_row:
+        for p1_name, p2_name, winner_name in all_games:
+            # Initialize counts if new player
+            game_counts[p1_name] = game_counts.get(p1_name, 0)
+            game_counts[p2_name] = game_counts.get(p2_name, 0)
+
+            # Fetch current ELOs
+            cursor.execute("SELECT ELO FROM players WHERE username = ?", (p1_name,))
+            p1_row = cursor.fetchone()
+            cursor.execute("SELECT ELO FROM players WHERE username = ?", (p2_name,))
+            p2_row = cursor.fetchone()
+
+            if not p1_row or not p2_row:
                 print(
-                    f"Warning: Player {p1_name} or {p2_name} not found. Skipping ELO update."
+                    f"Warning: Missing player in game ({p1_name} vs {p2_name}). Skipping."
                 )
                 continue
 
-            p1_elo, p2_elo = p1_elo_row[0], p2_elo_row[0]
-            k1, k2 = get_k(p1_name, cursor), get_k(p2_name, cursor)
-            exp_p1, exp_p2 = expected(p1_elo, p2_elo), expected(p2_elo, p1_elo)
+            p1_elo = p1_row[0]
+            p2_elo = p2_row[0]
+
+            # Determine K-factor based on games played so far
+            k1 = 16 if game_counts[p1_name] >= 30 else 32
+            k2 = 16 if game_counts[p2_name] >= 30 else 32
+
+            exp_p1 = expected(p1_elo, p2_elo)
+            exp_p2 = expected(p2_elo, p1_elo)
 
             if winner_name == p1_name:
                 p1_elo += k1 * (1 - exp_p1)
@@ -146,7 +160,9 @@ def recalculate_all_elos():
                 p1_elo += k1 * (0 - exp_p1)
                 p2_elo += k2 * (1 - exp_p2)
             else:
-                print(f"Warning: Winner '{winner_name}' invalid. Skipping ELO update.")
+                print(
+                    f"Warning: Invalid winner '{winner_name}' in game ({p1_name} vs {p2_name}). Skipping."
+                )
                 continue
 
             cursor.execute(
@@ -158,14 +174,18 @@ def recalculate_all_elos():
                 (round(p2_elo), p2_name),
             )
 
+            # Increment game counts after processing
+            game_counts[p1_name] += 1
+            game_counts[p2_name] += 1
+
         conn.commit()
-        print(f"ELO recalculation complete.")
+        print("ELO recalculation complete.")
     except sqlite3.Error as e:
-        print(f"Database error during ELO recalculation: {e}")
+        print(f"SQLite error: {e}")
         if conn:
             conn.rollback()
     except Exception as e:
-        print(f"Unexpected error during ELO recalculation: {e}")
+        print(f"Unexpected error: {e}")
     finally:
         if conn:
             conn.close()
