@@ -263,10 +263,10 @@ def get_tournament(tournament_id):
     )
 
 
+recalculate_all_elos()
 if __name__ == "__main__":
     # The global call to recalculate_all_elos() from user's original code:
     # This will run every time the Flask development server reloads.
     # For a production environment, or if recalculation is slow,
     # it's better to trigger this via an explicit admin action (like the route above).
-    recalculate_all_elos()
     app.run(host="0.0.0.0", port=3000, debug=True)
