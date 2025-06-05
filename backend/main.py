@@ -36,64 +36,66 @@ def get_k(username, cursor):
     return 16 if count > 30 else 32
 
 
-# --- REVERTED Recalculate All ELOs Function (to match user's provided logic) ---
 def recalculate_all_elos():
-    print("Recalculating all ELOs using user's specified sequential update logic...")
+    print("Recalculating all ELOs using locked K-factor logic...")
     conn = None
     try:
         conn = sqlite3.connect(db)
         cursor = conn.cursor()
-        # Reset all player ELOs to the DEFAULT_ELO before recalculating
+
+        # Reset all player ELOs to the default before recalculating
         cursor.execute("UPDATE players SET ELO = ?", (DEFAULT_ELO,))
 
-        # Fetch all games (archived or not, as per user's original logic for this function)
-        # Ordered by ID ASC for sequential processing
+        # Fetch all games in chronological order
         cursor.execute("SELECT p1, p2, winner FROM games ORDER BY id ASC")
         all_games = cursor.fetchall()
 
         if not all_games:
-            print("No games found to recalculate ELOs. Player ELOs reset to default.")
-            conn.commit()  # Commit the ELO reset
-            conn.close()
+            print("No games found. ELOs reset to default.")
+            conn.commit()
             return
 
-        for p1_name, p2_name, winner_name in all_games:
-            # Fetch current ELO for p1 for this specific game
-            cursor.execute("SELECT ELO FROM players WHERE username = ?", (p1_name,))
-            p1_elo_row = cursor.fetchone()
-            # Fetch current ELO for p2 for this specific game
-            cursor.execute("SELECT ELO FROM players WHERE username = ?", (p2_name,))
-            p2_elo_row = cursor.fetchone()
+        game_counts = {}  # Track number of games played per user so far
 
-            if not p1_elo_row or not p2_elo_row:
+        for p1_name, p2_name, winner_name in all_games:
+            # Initialize counts if new player
+            game_counts[p1_name] = game_counts.get(p1_name, 0)
+            game_counts[p2_name] = game_counts.get(p2_name, 0)
+
+            # Fetch current ELOs
+            cursor.execute("SELECT ELO FROM players WHERE username = ?", (p1_name,))
+            p1_row = cursor.fetchone()
+            cursor.execute("SELECT ELO FROM players WHERE username = ?", (p2_name,))
+            p2_row = cursor.fetchone()
+
+            if not p1_row or not p2_row:
                 print(
-                    f"Warning: Player {p1_name} or {p2_name} not found during ELO recalculation for game. Skipping this game's ELO update."
+                    f"Warning: Missing player in game ({p1_name} vs {p2_name}). Skipping."
                 )
                 continue
 
-            p1_elo = p1_elo_row[0]
-            p2_elo = p2_elo_row[0]
+            p1_elo = p1_row[0]
+            p2_elo = p2_row[0]
 
-            k1 = get_k(p1_name, cursor)
-            k2 = get_k(p2_name, cursor)
+            # Determine K-factor based on games played so far
+            k1 = 16 if game_counts[p1_name] >= 30 else 32
+            k2 = 16 if game_counts[p2_name] >= 30 else 32
 
             exp_p1 = expected(p1_elo, p2_elo)
             exp_p2 = expected(p2_elo, p1_elo)
 
-            # Calculate new ELOs based on this single game
             if winner_name == p1_name:
-                p1_elo += k1 * (1 - exp_p1)  # Direct modification of current ELO
-                p2_elo += k2 * (0 - exp_p2)  # Direct modification of current ELO
+                p1_elo += k1 * (1 - exp_p1)
+                p2_elo += k2 * (0 - exp_p2)
             elif winner_name == p2_name:
                 p1_elo += k1 * (0 - exp_p1)
                 p2_elo += k2 * (1 - exp_p2)
             else:
                 print(
-                    f"Warning: Winner '{winner_name}' in game between {p1_name} and {p2_name} is not one of the players. Skipping ELO update for this game."
+                    f"Warning: Invalid winner '{winner_name}' in game ({p1_name} vs {p2_name}). Skipping."
                 )
                 continue
 
-            # Update ELOs in the database for these two players IMMEDIATELY
             cursor.execute(
                 "UPDATE players SET ELO = ? WHERE username = ?",
                 (round(p1_elo), p1_name),
@@ -102,18 +104,19 @@ def recalculate_all_elos():
                 "UPDATE players SET ELO = ? WHERE username = ?",
                 (round(p2_elo), p2_name),
             )
-            # The ELOs for these players are now updated in the DB before the next game in the loop is processed.
 
-        conn.commit()  # Final commit after all games in the loop are processed
-        print(
-            f"ELO recalculation complete. All player ELOs updated based on game history, starting from {DEFAULT_ELO}."
-        )
+            # Increment game counts after processing
+            game_counts[p1_name] += 1
+            game_counts[p2_name] += 1
+
+        conn.commit()
+        print("ELO recalculation complete.")
     except sqlite3.Error as e:
-        print(f"Database error during ELO recalculation: {e}")
+        print(f"SQLite error: {e}")
         if conn:
             conn.rollback()
     except Exception as e:
-        print(f"Unexpected error during ELO recalculation: {e}")
+        print(f"Unexpected error: {e}")
     finally:
         if conn:
             conn.close()
