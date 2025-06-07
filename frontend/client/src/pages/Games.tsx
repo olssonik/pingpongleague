@@ -114,7 +114,6 @@ export default function Games() {
               <th className="px-6 py-3 rounded-tl-lg">Game ID</th>
               <th className="px-6 py-3">Players</th>
               <th className="px-6 py-3">Winner</th>
-              <th className="px-6 py-3 rounded-tr-lg">Date</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
@@ -144,9 +143,6 @@ export default function Games() {
                   <span className="text-success font-medium">{game.winner}</span>
                 </td>
 
-                <td className="px-6 py-4 whitespace-nowrap text-slate-500">
-                  {formatDate(game.date)}
-                </td>
               </tr>
             ))}
           </tbody>

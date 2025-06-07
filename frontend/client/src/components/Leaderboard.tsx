@@ -88,9 +88,7 @@ export default function Leaderboard({ players }: LeaderboardProps) {
                   {player.wins}/{player.losses}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right">
-                  <span className={`${player.winRate > 0 ? "bg-success" : "bg-danger"} text-white px-2 py-1 rounded-full text-xs`}>
                     {player.winRate}%
-                  </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-slate-700">
                   {player.gamesPlayed}

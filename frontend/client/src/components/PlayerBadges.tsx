@@ -12,8 +12,23 @@ export default function PlayerBadges({ achievements, size = "small", maxDisplay 
     return null;
   }
 
-  const displayAchievements = maxDisplay ? achievements.slice(0, maxDisplay) : achievements;
-  const hasMore = maxDisplay && achievements.length > maxDisplay;
+let parsedAchievements = achievements;
+
+if (typeof achievements === 'string') {
+  try {
+    parsedAchievements = JSON.parse(achievements);
+  } catch (e) {
+    console.error('Failed to parse achievements JSON:', e);
+    parsedAchievements = [];
+  }
+}
+
+const displayAchievements = Array.isArray(parsedAchievements)
+  ? (maxDisplay ? parsedAchievements.slice(0, maxDisplay) : parsedAchievements)
+  : [];
+const hasMore = maxDisplay && Array.isArray(parsedAchievements) && parsedAchievements.length > maxDisplay;
+  
+  console.log(displayAchievements)
 
   const badgeSize = size === "small" ? "h-6 w-6 text-xs" : "h-10 w-10 text-lg";
   const containerSpacing = size === "small" ? "space-x-1" : "space-x-2";
