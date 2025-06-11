@@ -2,14 +2,16 @@
 Ping Pong League Analysis Pipeline
 A modular system for analyzing ping pong match results with Elo ratings.
 """
-import os
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import sqlite3
 from datetime import datetime
+import warnings
 
 
 @dataclass
@@ -42,11 +44,12 @@ class StatCalculator(ABC):
 class EloCalculator(StatCalculator):
     """Calculates and tracks Elo ratings over time."""
 
-    def __init__(self, initial_rating: float = 500.0, k_factor: float = 32.0):
+    def __init__(self, initial_rating: float = 1200.0, k_factor: float = 32.0):
         self.initial_rating = initial_rating
         self.k_factor = k_factor
-        self.ratings_history: Dict[str, List[Tuple[Optional[datetime], float]]] = {}
+        self.ratings_history: Dict[str, List[Tuple[Optional[datetime], float, int]]] = {}
         self.current_ratings: Dict[str, float] = {}
+        self.match_indices: List[int] = []  # Track all match indices
 
     def get_name(self) -> str:
         return "Elo"
@@ -65,16 +68,17 @@ class EloCalculator(StatCalculator):
 
         return new_winner_rating, new_loser_rating
 
-    def _initialize_player(self, player: str, date: Optional[datetime] = None) -> None:
+    def _initialize_player(self, player: str, date: Optional[datetime] = None, match_index: int = 0) -> None:
         """Initialize a new player's rating."""
         if player not in self.current_ratings:
             self.current_ratings[player] = self.initial_rating
-            self.ratings_history[player] = [(date, self.initial_rating)]
+            self.ratings_history[player] = [(date, self.initial_rating, match_index)]
 
     def calculate(self, matches: List[MatchResult]) -> Dict[str, any]:
         """Calculate Elo ratings from match results."""
         self.current_ratings.clear()
         self.ratings_history.clear()
+        self.match_indices.clear()
 
         # Separate matches with and without dates
         dated_matches = [m for m in matches if m.date_played is not None]
@@ -83,8 +87,8 @@ class EloCalculator(StatCalculator):
         # Process undated matches first to establish initial ratings
         for match in undated_matches:
             if not match.doubles:  # Only process singles matches for now
-                self._initialize_player(match.p1)
-                self._initialize_player(match.p2)
+                self._initialize_player(match.p1, match_index=match.index)
+                self._initialize_player(match.p2, match_index=match.index)
 
                 winner_rating = self.current_ratings[match.winner]
                 loser = match.p1 if match.winner == match.p2 else match.p2
@@ -97,9 +101,10 @@ class EloCalculator(StatCalculator):
                 self.current_ratings[match.winner] = new_winner_rating
                 self.current_ratings[loser] = new_loser_rating
 
-                # Add to history without dates
-                self.ratings_history[match.winner].append((None, new_winner_rating))
-                self.ratings_history[loser].append((None, new_loser_rating))
+                # Add to history with match index
+                self.ratings_history[match.winner].append((None, new_winner_rating, match.index))
+                self.ratings_history[loser].append((None, new_loser_rating, match.index))
+                self.match_indices.append(match.index)
 
         # Sort dated matches by date
         dated_matches.sort(key=lambda x: x.date_played)
@@ -107,8 +112,8 @@ class EloCalculator(StatCalculator):
         # Process dated matches
         for match in dated_matches:
             if not match.doubles:  # Only process singles matches for now
-                self._initialize_player(match.p1, match.date_played)
-                self._initialize_player(match.p2, match.date_played)
+                self._initialize_player(match.p1, match.date_played, match.index)
+                self._initialize_player(match.p2, match.date_played, match.index)
 
                 winner_rating = self.current_ratings[match.winner]
                 loser = match.p1 if match.winner == match.p2 else match.p2
@@ -121,17 +126,23 @@ class EloCalculator(StatCalculator):
                 self.current_ratings[match.winner] = new_winner_rating
                 self.current_ratings[loser] = new_loser_rating
 
-                # Add to history with dates
-                self.ratings_history[match.winner].append((match.date_played, new_winner_rating))
-                self.ratings_history[loser].append((match.date_played, new_loser_rating))
+                # Add to history with dates and match index
+                self.ratings_history[match.winner].append((match.date_played, new_winner_rating, match.index))
+                self.ratings_history[loser].append((match.date_played, new_loser_rating, match.index))
+                self.match_indices.append(match.index)
 
         return {
             'current_ratings': self.current_ratings.copy(),
             'ratings_history': self.ratings_history.copy()
         }
 
-    def plot_ratings_over_time(self, save_path: Optional[str] = None) -> None:
-        """Plot Elo ratings over time for all players."""
+    def plot_ratings_over_time(self, save_path: Optional[str] = None, use_index: bool = True) -> None:
+        """Plot Elo ratings over time for all players.
+
+        Args:
+            save_path: Optional path to save the plot
+            use_index: If True, plot by match index instead of dates
+        """
         plt.figure(figsize=(12, 8))
 
         # Define a varied color palette
@@ -143,54 +154,99 @@ class EloCalculator(StatCalculator):
             '#393b79', '#637939', '#8c6d31', '#843c39', '#7b4173'
         ]
 
-        # Get the latest date across all players for horizontal line extension
-        all_dates = []
-        for history in self.ratings_history.values():
-            dates = [entry[0] for entry in history if entry[0] is not None]
-            all_dates.extend(dates)
+        if use_index:
+            # Plot by match index
+            if not self.match_indices:
+                print("No match data found to plot.")
+                return
 
-        if not all_dates:
-            print("No dated matches found to plot.")
-            return
+            max_index = max(self.match_indices)
 
-        max_date = max(all_dates)
+            for i, (player, history) in enumerate(self.ratings_history.items()):
+                indices = [entry[2] for entry in history]  # Use actual match indices
+                ratings = [entry[1] for entry in history]
 
-        for i, (player, history) in enumerate(self.ratings_history.items()):
-            dates = [entry[0] for entry in history if entry[0] is not None]
-            ratings = [entry[1] for entry in history if entry[0] is not None]
+                if indices:
+                    # Use color from palette, cycling if more players than colors
+                    color = colors[i % len(colors)]
 
-            if dates:  # Only plot if there are dated matches
-                # Use color from palette, cycling if more players than colors
-                color = colors[i % len(colors)]
+                    # Plot the main line
+                    plt.step(indices, ratings, label=player, linewidth=2, color=color)
 
-                # Plot the main line
-                plt.plot(dates, ratings, label=player, linewidth=2, color=color)
+                    # Add diamond marker for first game
+                    plt.plot(indices[0], ratings[0], marker='D', markersize=8, color=color,
+                            markeredgecolor='black', markeredgewidth=1, zorder=5)
 
-                # Add diamond marker for first game
-                plt.plot(dates[0], ratings[0], marker='D', markersize=8, color=color,
-                         markeredgecolor='black', markeredgewidth=1, zorder=5)
+                    # Add horizontal line from last game to end of chart
+                    last_index = indices[-1]
+                    last_rating = ratings[-1]
 
-                # Add horizontal line from last game to end of chart
-                last_date = dates[-1]
-                last_rating = ratings[-1]
+                    if last_index < max_index:
+                        plt.plot([last_index, max_index], [last_rating, last_rating],
+                                color=color, linestyle='-', linewidth=2)
 
-                if last_date < max_date:
-                    plt.plot([last_date, max_date], [last_rating, last_rating],
-                             color=color, linestyle='-', linewidth=2)
+                    # Add diamond marker at max index with current Elo label
+                    plt.plot(max_index, last_rating, marker='D', markersize=8, color=color,
+                            markeredgecolor='black', markeredgewidth=1, zorder=5)
+                    plt.text(max_index, last_rating, f'   {last_rating:.0f}',
+                            verticalalignment='center', fontsize=9, color=color,
+                            weight='bold', zorder=6)
 
-                # Add diamond marker at max date with current Elo label
-                plt.plot(max_date, last_rating, marker='D', markersize=8, color=color,
-                         markeredgecolor='black', markeredgewidth=1, zorder=5)
-                plt.text(max_date, last_rating, f'   {last_rating:.0f}',
-                         verticalalignment='center', fontsize=9, color=color,
-                         weight='bold', zorder=6)
+            plt.xlabel('Match Index')
+            plt.ylabel('Elo Rating')
+            plt.title('Ping Pong Elo Ratings by Match Index')
 
-        plt.xlabel('Date')
-        plt.ylabel('Elo Rating')
-        plt.title('Ping Pong Elo Ratings Over Time')
+        else:
+            # Original date-based plotting
+            # Get the latest date across all players for horizontal line extension
+            all_dates = []
+            for history in self.ratings_history.values():
+                dates = [entry[0] for entry in history if entry[0] is not None]
+                all_dates.extend(dates)
+
+            if not all_dates:
+                print("No dated matches found to plot.")
+                return
+
+            max_date = max(all_dates)
+
+            for i, (player, history) in enumerate(self.ratings_history.items()):
+                dates = [entry[0] for entry in history if entry[0] is not None]
+                ratings = [entry[1] for entry in history if entry[0] is not None]
+
+                if dates:  # Only plot if there are dated matches
+                    # Use color from palette, cycling if more players than colors
+                    color = colors[i % len(colors)]
+
+                    # Plot the main line
+                    plt.plot(dates, ratings, marker='o', label=player, linewidth=2, color=color)
+
+                    # Add diamond marker for first game
+                    plt.plot(dates[0], ratings[0], marker='D', markersize=8, color=color,
+                            markeredgecolor='black', markeredgewidth=1, zorder=5)
+
+                    # Add horizontal line from last game to end of chart
+                    last_date = dates[-1]
+                    last_rating = ratings[-1]
+
+                    if last_date < max_date:
+                        plt.plot([last_date, max_date], [last_rating, last_rating],
+                                color=color, linestyle='-', linewidth=2)
+
+                    # Add diamond marker at max date with current Elo label
+                    plt.plot(max_date, last_rating, marker='D', markersize=8, color=color,
+                            markeredgecolor='black', markeredgewidth=1, zorder=5)
+                    plt.text(max_date, last_rating, f'   {last_rating:.0f}',
+                            verticalalignment='center', fontsize=9, color=color,
+                            weight='bold', zorder=6)
+
+            plt.xlabel('Date')
+            plt.ylabel('Elo Rating')
+            plt.title('Ping Pong Elo Ratings Over Time')
+            plt.xticks(rotation=45)
+
         plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
         plt.grid(True, alpha=0.3)
-        plt.xticks(rotation=45)
         plt.tight_layout()
 
         if save_path:
@@ -204,10 +260,10 @@ class DataLoader:
 
     @staticmethod
     def load_from_database(
-            db_path: str,
-            table_name: str = "games",
-            season_filter: Optional[int] = None,
-            include_archived: bool = True
+        db_path: str,
+        table_name: str = "games",
+        season_filter: Optional[int] = None,
+        include_archived: bool = True
     ) -> List[MatchResult]:
         """Load match results from SQLite database."""
         query = f"SELECT * FROM {table_name}"
@@ -228,20 +284,45 @@ class DataLoader:
             with sqlite3.connect(db_path) as conn:
                 df = pd.read_sql_query(query, conn)
 
-            # Convert date column, handling null values
+            # Convert date column from unix timestamp, handling null values
             df['date_played'] = pd.to_datetime(df['date_played'], unit='s', errors='coerce')
+
+            # Debug: Print column names if there's an issue
+            print(f"Available columns: {list(df.columns)}")
+
+            # Map common column name variations
+            column_mapping = {
+                'index': ['Index', 'index', 'id', 'ID', 'match_id'],
+                'date_played': ['date_played', 'date', 'match_date'],
+                'p1': ['p1', 'player1', 'player_1'],
+                'p2': ['p2', 'player2', 'player_2'],
+                'doubles': ['doubles', 'is_doubles', 'double'],
+                'winner': ['winner', 'winning_player'],
+                'archived': ['archived', 'is_archived'],
+                'season': ['season', 'season_id']
+            }
+
+            # Find actual column names
+            actual_columns = {}
+            for field, possible_names in column_mapping.items():
+                for name in possible_names:
+                    if name in df.columns:
+                        actual_columns[field] = name
+                        break
+                if field not in actual_columns:
+                    raise ValueError(f"Could not find column for '{field}'. Available columns: {list(df.columns)}")
 
             matches = []
             for _, row in df.iterrows():
                 match = MatchResult(
-                    index=int(row['id']),
+                    index=int(row[actual_columns['index']]),
                     date_played=row['date_played'] if pd.notna(row['date_played']) else None,
-                    p1=str(row['p1']),
-                    p2=str(row['p2']),
-                    doubles=bool(row['doubles']),
-                    winner=str(row['winner']),
-                    archived=bool(row['archived']),
-                    season=int(row['season'])
+                    p1=str(row[actual_columns['p1']]),
+                    p2=str(row[actual_columns['p2']]),
+                    doubles=bool(row[actual_columns['doubles']]),
+                    winner=str(row[actual_columns['winner']]),
+                    archived=bool(row[actual_columns['archived']]),
+                    season=int(row[actual_columns['season']])
                 )
                 matches.append(match)
 
@@ -355,13 +436,13 @@ class PingPongAnalyzer:
         self.calculators.append(calculator)
 
     def load_data(
-            self,
-            source: Union[str, pd.DataFrame],
-            source_type: str = "database",
-            table_name: str = "games",
-            season_filter: Optional[int] = None,
-            include_archived: bool = True,
-            **kwargs
+        self,
+        source: Union[str, pd.DataFrame],
+        source_type: str = "database",
+        table_name: str = "games",
+        season_filter: Optional[int] = None,
+        include_archived: bool = True,
+        **kwargs
     ) -> None:
         """Load match data from database, file, or DataFrame."""
         if source_type == "database" and isinstance(source, str):
@@ -387,9 +468,9 @@ class PingPongAnalyzer:
         try:
             info = self.get_database_info(db_path, table_name)
 
-            print("\n" + "=" * 60)
+            print("\n" + "="*60)
             print("DATABASE INFORMATION")
-            print("=" * 60)
+            print("="*60)
 
             # Schema
             print(f"\nTable: {table_name}")
@@ -413,7 +494,7 @@ class PingPongAnalyzer:
             print(f"\nSeason Breakdown:")
             print("-" * 30)
             for season in info['season_breakdown']:
-                print(f"Season {season['season']:2d}: {season['matches']:3d} matches "
+                print(f"Season {season['season']:2d}: {season['games']:3d} matches "
                       f"({season['dated_matches']:3d} with dates)")
 
         except Exception as e:
@@ -443,9 +524,9 @@ class PingPongAnalyzer:
             print("No analysis results available. Run run_analysis() first.")
             return
 
-        print("\n" + "=" * 50)
+        print("\n" + "="*50)
         print("PING PONG LEAGUE ANALYSIS SUMMARY")
-        print("=" * 50)
+        print("="*50)
 
         print(f"Total matches processed: {len(self.matches)}")
         dated_matches = sum(1 for m in self.matches if m.date_played is not None)
@@ -470,12 +551,11 @@ def main():
     analyzer = PingPongAnalyzer()
 
     # Add Elo calculator
-    elo_calc = EloCalculator(initial_rating=400.0, k_factor=32.0)
+    elo_calc = EloCalculator(initial_rating=400, k_factor=32.0)
     analyzer.add_calculator(elo_calc)
 
     # Example usage with your database
     db_path = "../backend/game_database.db"
-    assert os.path.exists(db_path)
 
     try:
         # Print database information
