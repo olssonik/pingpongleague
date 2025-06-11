@@ -470,7 +470,7 @@ def main():
     analyzer = PingPongAnalyzer()
 
     # Add Elo calculator
-    elo_calc = EloCalculator(initial_rating=500.0, k_factor=16.0)
+    elo_calc = EloCalculator(initial_rating=400.0, k_factor=32.0)
     analyzer.add_calculator(elo_calc)
 
     # Example usage with your database
