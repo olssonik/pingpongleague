@@ -11,7 +11,8 @@ CORS(app)
 # --- Configuration ---
 K = 32  # User's original K-factor for ELO calculation
 db = "./game_database.db"  # User's original database path
-DEFAULT_ELO = 400  # Centralized default ELO
+DEFAULT_ELO = 480  # Centralized default ELO
+CURRENT_SEASON = 2
 
 
 # --- User's Original ELO Helper Functions (UNCHANGED) ---
@@ -47,7 +48,7 @@ def recalculate_all_elos():
         cursor.execute("UPDATE players SET ELO = ?", (DEFAULT_ELO,))
 
         # Fetch all games in chronological order
-        cursor.execute("SELECT p1, p2, winner FROM games ORDER BY id ASC")
+        cursor.execute("SELECT p1, p2, winner FROM games WHERE season = ? ORDER BY id ASC", (CURRENT_SEASON,))
         all_games = cursor.fetchall()
 
         if not all_games:
@@ -128,7 +129,7 @@ def get_data():
     cursor = conn.cursor()
     # Fetch only non-archived games for general display
     cursor.execute(
-        "SELECT id, p1, p2, winner, date_played, archived, season FROM games WHERE archived = 0 ORDER BY id ASC"
+        "SELECT id, p1, p2, winner, date_played, archived, season FROM games WHERE season = ? ORDER BY id ASC", (CURRENT_SEASON,)
     )
     all_games_rows = cursor.fetchall()
     games_list = []
