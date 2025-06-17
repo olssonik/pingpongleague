@@ -129,7 +129,7 @@ def get_data():
     cursor = conn.cursor()
     # Fetch only non-archived games for general display
     cursor.execute(
-        "SELECT id, p1, p2, winner, date_played, archived, season FROM games WHERE season = ? ORDER BY id ASC", (CURRENT_SEASON,)
+        "SELECT id, p1, p2, winner, date_played, archived, season FROM games WHERE season = ? AND archived = 0 ORDER BY id ASC", (CURRENT_SEASON,)
     )
     all_games_rows = cursor.fetchall()
     games_list = []
