@@ -160,7 +160,7 @@ function AdminPage() {
   const [p1, setP1] = useState("");
   const [p2, setP2] = useState("");
   const [winner, setWinner] = useState("");
-  const [gameSeason, setGameSeason] = useState("1");
+  const [gameSeason, setGameSeason] = useState("2");
   const [useCurrentTimeForBatch, setUseCurrentTimeForBatch] = useState(true);
 
   // State for "Add Player" form
