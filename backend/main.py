@@ -11,8 +11,8 @@ CORS(app)
 # --- Configuration ---
 K = 32  # User's original K-factor for ELO calculation
 db = "./game_database.db"  # User's original database path
-DEFAULT_ELO = 400  # Centralized default ELO
-CURRENT_SEASON = 1
+DEFAULT_ELO = 480
+CURRENT_SEASON = 2
 
 
 # --- User's Original ELO Helper Functions (UNCHANGED) ---
