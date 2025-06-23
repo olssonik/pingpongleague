@@ -7,25 +7,21 @@ interface GamesListProps {
 }
 
 export default function GamesList({ games, isDetailed = false }: GamesListProps) {
-  const formatDate = (date: string | null) => {
-    if (!date) return "";
-    return new Date(date).toLocaleDateString();
-  };
-  
+
   // For the detailed view, we need to determine the current player's username
   // We assume all games in the filtered list include the current player
   let currentPlayerUsername = "";
   if (isDetailed && games.length > 0) {
     // Simple approach: check which player appears in all games
     const playerCounts: Record<string, number> = {};
-    
+
     // Count appearances of each player
     games.forEach(game => {
       game.players.forEach(player => {
         playerCounts[player] = (playerCounts[player] || 0) + 1;
       });
     });
-    
+
     // Find the player who appears in all or most games
     const totalGames = games.length;
     for (const [player, count] of Object.entries(playerCounts)) {
@@ -34,7 +30,7 @@ export default function GamesList({ games, isDetailed = false }: GamesListProps)
         break;
       }
     }
-    
+
     // Fallback: just use the first player from the first game if no common player found
     if (!currentPlayerUsername && games[0]?.players?.length > 0) {
       currentPlayerUsername = games[0].players[0];
@@ -49,7 +45,6 @@ export default function GamesList({ games, isDetailed = false }: GamesListProps)
             <th className="px-6 py-3 rounded-tl-lg">Game</th>
             <th className="px-6 py-3">{isDetailed ? "Opponent" : "Players"}</th>
             <th className="px-6 py-3">{isDetailed ? "Result" : "Winner"}</th>
-            <th className="px-6 py-3 rounded-tr-lg">Date</th>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-slate-200">
@@ -57,7 +52,7 @@ export default function GamesList({ games, isDetailed = false }: GamesListProps)
             <tr
               key={game.id}
               className="hover:bg-slate-50 cursor-pointer"
-              onClick={() => {/* Will implement game details view in future */}}
+              onClick={() => {/* Will implement game details view in future */ }}
             >
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className="font-semibold text-slate-700">#{game.id}</span>
@@ -87,16 +82,7 @@ export default function GamesList({ games, isDetailed = false }: GamesListProps)
                 </td>
               )}
               <td className="px-6 py-4 whitespace-nowrap">
-                {isDetailed ? (
-                  <span className={`${game.winner === currentPlayerUsername ? "bg-success" : "bg-danger"} text-white px-2 py-1 rounded-full text-xs`}>
-                    {game.winner === currentPlayerUsername ? "Win" : "Loss"}
-                  </span>
-                ) : (
-                  <span className="text-success font-medium">{game.winner}</span>
-                )}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-slate-500">
-                {formatDate(game.date)}
+                {game.winner}
               </td>
             </tr>
           ))}
