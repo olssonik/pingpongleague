@@ -30,7 +30,7 @@ export default function Leaderboard({ players }: LeaderboardProps) {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-slate-800">Leaderboard</h2>
         <div>
-          <select 
+          <select
             className="text-sm border-slate-300 rounded-md p-1"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortOption)}
@@ -55,46 +55,59 @@ export default function Leaderboard({ players }: LeaderboardProps) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
-            {sortedPlayers.map((player, index) => (
-              <tr key={player.username} className="hover:bg-slate-50 cursor-pointer">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <Link href={`/players/${player.username}`}>
-                    <div className="flex items-center">
-                      <span className={`${index < 1 ? "bg-primary" : "bg-slate-500"} text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold`}>
-                        {index + 1}
-                      </span>
-                    </div>
-                  </Link>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <Link href={`/players/${player.username}`}>
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0 h-10 w-10 bg-primary text-white rounded-full flex items-center justify-center text-lg font-semibold">
-                        {player.username.charAt(0).toUpperCase()}
+            {sortedPlayers.map((player, index) =>
+              player.gamesPlayed === 0 ? null : (
+                <tr
+                  key={player.username}
+                  className="hover:bg-slate-50 cursor-pointer"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Link href={`/players/${player.username}`}>
+                      <div className="flex items-center">
+                        <span
+                          className={`${index < 1 ? "bg-primary" : "bg-slate-500"} text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-semibold`}
+                        >
+                          {index + 1}
+                        </span>
                       </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-slate-900">{player.username}</div>
-                        <div className="mt-1">
-                          <PlayerBadges achievements={player.achievements || []} size="small" maxDisplay={3} />
+                    </Link>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Link href={`/players/${player.username}`}>
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10 bg-primary text-white rounded-full flex items-center justify-center text-lg font-semibold">
+                          {player.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-slate-900">
+                            {player.username}
+                          </div>
+                          <div className="mt-1">
+                            <PlayerBadges
+                              achievements={player.achievements || []}
+                              size="small"
+                              maxDisplay={3}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Link>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-lg font-mono font-semibold text-primary">
-                  {player.elo}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
-                  {player.wins}/{player.losses}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right">
+                    </Link>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-lg font-mono font-semibold text-primary">
+                    {player.elo}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    {player.wins}/{player.losses}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
                     {player.winRate}%
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-slate-700">
-                  {player.gamesPlayed}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-slate-700">
+                    {player.gamesPlayed}
+                  </td>
+                </tr>
+              ),
+            )}
           </tbody>
         </table>
       </div>
