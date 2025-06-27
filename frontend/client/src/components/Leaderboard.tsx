@@ -55,7 +55,7 @@ export default function Leaderboard({ players }: LeaderboardProps) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-slate-200">
-            {sortedPlayers.map((player, index) =>
+            {sortedPlayers.filter(p => p.gamesPlayed > 0).map((player, index) =>
               player.gamesPlayed === 0 ? null : (
                 <tr
                   key={player.username}
