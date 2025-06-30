@@ -40,6 +40,46 @@ class StatCalculator(ABC):
         """Return the name of this statistic."""
         pass
 
+
+class MatchCountCalculator(StatCalculator):
+    """Calculates match counts for each player."""
+
+    def __init__(self):
+        self._last_results: Dict[str, any] = {}
+
+    def get_name(self) -> str:
+        return "MatchCount"
+
+    def calculate(self, matches: List[MatchResult]) -> Dict[str, any]:
+        """Calculate match counts for each player."""
+        player_counts: Dict[str, int] = {}
+
+        for match in matches:
+            if not match.doubles:  # Only count singles matches
+                player_counts[match.p1] = player_counts.get(match.p1, 0) + 1
+                player_counts[match.p2] = player_counts.get(match.p2, 0) + 1
+
+        results = {'player_counts': player_counts}
+        self._last_results = results  # Store results for later use
+        return results
+
+    def print_match_counts(self) -> None:
+        """Print players ordered by number of matches."""
+        if not self._last_results:
+            print("No match count data available. Run calculate() first.")
+            return
+
+        player_counts = self._last_results['player_counts']
+        sorted_players = sorted(player_counts.items(), key=lambda x: x[1], reverse=True)
+
+        print("\n" + "=" * 40)
+        print("PLAYERS BY MATCH COUNT")
+        print("=" * 40)
+
+        for rank, (player, count) in enumerate(sorted_players, 1):
+            print(f"{rank:2d}. {player:<20} {count:3d} matches")
+
+
 class NetworkAnalyzer(StatCalculator):
     """Analyzes player interaction networks based on match frequency."""
 
@@ -217,7 +257,6 @@ class NetworkAnalyzer(StatCalculator):
         print("-" * 30)
         for i, (player, cent) in enumerate(sorted_centrality[:10]):
             print(f"{i + 1:2d}. {player}: {cent:.3f}")
-
 
 
 class EloCalculator(StatCalculator):
@@ -781,6 +820,9 @@ def main():
     network_analyzer = NetworkAnalyzer()
     analyzer.add_calculator(network_analyzer)
 
+    match_counter = MatchCountCalculator()
+    analyzer.add_calculator(match_counter)
+
     # Example usage with your database
     db_path = "../backend/game_database.db"
 
@@ -803,6 +845,8 @@ def main():
 
         # Print summary
         analyzer.print_summary()
+
+        match_counter.print_match_counts()
 
         # Plot Elo ratings over time
         elo_calc.plot_ratings_over_time('elo_ratings_timeline.png')
