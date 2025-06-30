@@ -7,12 +7,12 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple, Union
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import sqlite3
 from datetime import datetime
-import warnings
+import networkx as nx
 
+plt.style.use('seaborn-v0_8')
 
 @dataclass
 class MatchResult:
@@ -39,6 +39,185 @@ class StatCalculator(ABC):
     def get_name(self) -> str:
         """Return the name of this statistic."""
         pass
+
+class NetworkAnalyzer(StatCalculator):
+    """Analyzes player interaction networks based on match frequency."""
+
+    def __init__(self):
+        self.match_counts: Dict[Tuple[str, str], int] = {}
+        self.graph: nx.Graph = nx.Graph()
+
+    def get_name(self) -> str:
+        return "Network"
+
+    def calculate(self, matches: List[MatchResult]) -> Dict[str, any]:
+        """Calculate network statistics from match results."""
+        self.match_counts.clear()
+        self.graph.clear()
+
+        # Count matches between each pair of players
+        for match in matches:
+            if not match.doubles:  # Only process singles matches
+                # Create sorted tuple to ensure consistent pairing
+                players = tuple(sorted([match.p1, match.p2]))
+                self.match_counts[players] = self.match_counts.get(players, 0) + 1
+
+        # Build network graph
+        for (p1, p2), count in self.match_counts.items():
+            self.graph.add_edge(p1, p2, weight=count)
+
+        # Calculate network statistics
+        centrality = nx.degree_centrality(self.graph)
+        betweenness = nx.betweenness_centrality(self.graph)
+
+        return {
+            'match_counts': self.match_counts.copy(),
+            'graph': self.graph.copy(),
+            'centrality': centrality,
+            'betweenness': betweenness,
+            'total_players': len(self.graph.nodes()),
+            'total_edges': len(self.graph.edges())
+        }
+
+    def plot_network(
+            self,
+            save_path: Optional[str] = None,
+            min_matches: int = 1,
+            node_size_multiplier: float = 1000.0,
+            edge_width_multiplier: float = 5.0,
+            layout: str = 'spring'
+    ) -> None:
+        """Plot the player network graph.
+
+        Args:
+            save_path: Optional path to save the plot
+            min_matches: Minimum number of matches to show an edge
+            node_size_multiplier: Multiplier for node sizes
+            edge_width_multiplier: Multiplier for edge widths
+            layout: Layout algorithm ('spring', 'circular', 'kamada_kawai')
+        """
+        if not self.graph.nodes():
+            print("No network data available. Run calculate() first.")
+            return
+
+        plt.figure(figsize=(14, 10))
+
+        # Filter edges by minimum matches
+        filtered_graph = self.graph.copy()
+        edges_to_remove = [
+            (u, v) for u, v, d in filtered_graph.edges(data=True)
+            if d['weight'] < min_matches
+        ]
+        filtered_graph.remove_edges_from(edges_to_remove)
+
+        # Remove isolated nodes
+        isolated_nodes = list(nx.isolates(filtered_graph))
+        filtered_graph.remove_nodes_from(isolated_nodes)
+
+        if not filtered_graph.nodes():
+            print(f"No edges with >= {min_matches} matches found.")
+            return
+
+        # Choose layout
+        layout_functions = {
+            'spring': nx.spring_layout,
+            'circular': nx.circular_layout,
+            'kamada_kawai': nx.kamada_kawai_layout
+        }
+
+        if layout not in layout_functions:
+            layout = 'spring'
+            pos = layout_functions[layout](filtered_graph, k=2, iterations=50)
+
+        else:
+            pos = layout_functions[layout](filtered_graph)
+
+        # Calculate node sizes based on degree centrality
+        centrality = nx.degree_centrality(filtered_graph)
+        node_sizes = [centrality.get(node, 0) * node_size_multiplier + 100 for node in filtered_graph.nodes()]
+
+        # Calculate edge widths based on match counts
+        edge_weights = [filtered_graph[u][v]['weight'] for u, v in filtered_graph.edges()]
+        max_weight = max(edge_weights) if edge_weights else 1
+        edge_widths = [w / max_weight * edge_width_multiplier + 0.5 for w in edge_weights]
+
+        # Draw the network
+        nx.draw_networkx_nodes(
+            filtered_graph, pos,
+            node_size=node_sizes,
+            node_color='lightblue',
+            alpha=0.8
+        )
+
+        nx.draw_networkx_edges(
+            filtered_graph, pos,
+            width=edge_widths,
+            alpha=0.6,
+            edge_color='gray'
+        )
+
+        nx.draw_networkx_labels(
+            filtered_graph, pos,
+            font_size=10,
+            font_weight='bold'
+        )
+
+        # Add edge labels showing match counts
+        edge_labels = nx.get_edge_attributes(filtered_graph, 'weight')
+        nx.draw_networkx_edge_labels(
+            filtered_graph, pos, edge_labels,
+            font_size=8, alpha=0.7
+        )
+
+        plt.title(f'Player Network Graph (min {min_matches} matches)\n'
+                  f'Node size = centrality, Edge width = match frequency',
+                  fontsize=14)
+        plt.axis('off')
+        plt.tight_layout()
+
+        if save_path:
+            plt.savefig(save_path, dpi=300, bbox_inches='tight')
+
+    def print_network_stats(self) -> None:
+        """Print network statistics summary."""
+        if not self.graph.nodes():
+            print("No network data available. Run calculate() first.")
+            return
+
+        print("\n" + "=" * 50)
+        print("NETWORK ANALYSIS SUMMARY")
+        print("=" * 50)
+
+        print(f"Total players: {len(self.graph.nodes())}")
+        print(f"Total player pairs: {len(self.graph.edges())}")
+
+        # Most frequent matchups
+        sorted_matches = sorted(self.match_counts.items(), key=lambda x: x[1], reverse=True)
+        print(f"\nMost frequent matchups:")
+        print("-" * 30)
+        for i, ((p1, p2), count) in enumerate(sorted_matches[:10]):
+            print(f"{i + 1:2d}. {p1} vs {p2}: {count} matches")
+
+        # Network connectivity
+        if nx.is_connected(self.graph):
+            diameter = nx.diameter(self.graph)
+            avg_path_length = nx.average_shortest_path_length(self.graph)
+            print(f"\nNetwork connectivity:")
+            print("-" * 30)
+            print(f"Network diameter: {diameter}")
+            print(f"Average path length: {avg_path_length:.2f}")
+        else:
+            components = list(nx.connected_components(self.graph))
+            print(f"\nNetwork has {len(components)} disconnected components")
+
+        # Most central players
+        centrality = nx.degree_centrality(self.graph)
+        sorted_centrality = sorted(centrality.items(), key=lambda x: x[1], reverse=True)
+        print(f"\nMost connected players:")
+        print("-" * 30)
+        for i, (player, cent) in enumerate(sorted_centrality[:10]):
+            print(f"{i + 1:2d}. {player}: {cent:.3f}")
+
 
 
 class EloCalculator(StatCalculator):
@@ -177,18 +356,28 @@ class EloCalculator(StatCalculator):
                     plt.plot(indices[0], ratings[0], marker='D', markersize=8, color=color,
                             markeredgecolor='black', markeredgewidth=1, zorder=5)
 
+                    peak_rating = max(ratings)
+                    peak_index_pos = ratings.index(peak_rating)
+                    peak_index = indices[peak_index_pos]
+
+                    plt.plot(peak_index, peak_rating, marker='*', markersize=12, color='gold',
+                             markeredgecolor='black', markeredgewidth=1, zorder=6)
+                    plt.text(peak_index, peak_rating, f'   {peak_rating:.0f}',
+                             verticalalignment='center', fontsize=9, color='gold',
+                             weight='bold', zorder=7)
+
                     # Add horizontal line from last game to end of chart
                     last_index = indices[-1]
                     last_rating = ratings[-1]
 
-                    if last_index < max_index:
-                        plt.plot([last_index, max_index], [last_rating, last_rating],
-                                color=color, linestyle='-', linewidth=2)
+                    # if last_index < max_index:
+                    #     plt.plot([last_index, max_index], [last_rating, last_rating],
+                    #             color=color, linestyle='-', linewidth=2)
 
                     # Add diamond marker at max index with current Elo label
-                    plt.plot(max_index, last_rating, marker='D', markersize=8, color=color,
+                    plt.plot(last_index, last_rating, marker='D', markersize=8, color=color,
                             markeredgecolor='black', markeredgewidth=1, zorder=5)
-                    plt.text(max_index, last_rating, f'   {last_rating:.0f}',
+                    plt.text(last_index, last_rating, f'   {last_rating:.0f}',
                             verticalalignment='center', fontsize=9, color=color,
                             weight='bold', zorder=6)
 
@@ -252,20 +441,29 @@ class EloCalculator(StatCalculator):
         if save_path:
             plt.savefig(save_path, dpi=300, bbox_inches='tight')
 
-        # plt.show()
-
 
 class DataLoader:
     """Handles loading and parsing match data."""
 
     @staticmethod
     def load_from_database(
-        db_path: str,
-        table_name: str = "games",
-        season_filter: Optional[int] = None,
-        include_archived: bool = True
+            db_path: str,
+            table_name: str = "games",
+            season_filter: Optional[int] = None,
+            include_archived: bool = True,
+            thursday_friday_afternoon_only: bool = False,
+            afternoon_start_hour: int = 12
     ) -> List[MatchResult]:
-        """Load match results from SQLite database."""
+        """Load match results from SQLite database.
+
+        Args:
+            db_path: Path to SQLite database
+            table_name: Name of the table containing match data
+            season_filter: Filter for specific season (None for all seasons)
+            include_archived: Whether to include archived matches
+            thursday_friday_afternoon_only: If True, only include matches on Thu/Fri afternoons
+            afternoon_start_hour: Hour (24-hour format) when afternoon starts (default: 12)
+        """
         query = f"SELECT * FROM {table_name}"
         conditions = []
 
@@ -286,6 +484,29 @@ class DataLoader:
 
             # Convert date column from unix timestamp, handling null values
             df['date_played'] = pd.to_datetime(df['date_played'], unit='s', errors='coerce')
+
+            # Apply Thursday/Friday afternoon filter if requested
+            if thursday_friday_afternoon_only:
+                # Filter out rows with null dates first
+                original_count = len(df)
+                df = df.dropna(subset=['date_played'])
+
+                if len(df) < original_count:
+                    print(f"Dropped {original_count - len(df)} matches without dates for day/time filtering")
+
+                # Extract day of week (0=Monday, 3=Thursday, 4=Friday) and hour
+                df['day_of_week'] = df['date_played'].dt.dayofweek
+                df['hour'] = df['date_played'].dt.hour
+
+                # Filter for Thursday (3) or Friday (4) afternoons
+                thursday_friday_mask = df['day_of_week'].isin([3, 4])
+                afternoon_mask = df['hour'] >= afternoon_start_hour
+                df = df[thursday_friday_mask & afternoon_mask]
+
+                # Drop the temporary columns
+                df = df.drop(['day_of_week', 'hour'], axis=1)
+
+                print(f"Filtered to {len(df)} matches on Thursday/Friday afternoons")
 
             # Debug: Print column names if there's an issue
             print(f"Available columns: {list(df.columns)}")
@@ -436,18 +657,21 @@ class PingPongAnalyzer:
         self.calculators.append(calculator)
 
     def load_data(
-        self,
-        source: Union[str, pd.DataFrame],
-        source_type: str = "database",
-        table_name: str = "games",
-        season_filter: Optional[int] = None,
-        include_archived: bool = True,
-        **kwargs
+            self,
+            source: Union[str, pd.DataFrame],
+            source_type: str = "database",
+            table_name: str = "games",
+            season_filter: Optional[int] = None,
+            include_archived: bool = True,
+            thursday_friday_afternoon_only: bool = False,
+            afternoon_start_hour: int = 12,
+            **kwargs
     ) -> None:
         """Load match data from database, file, or DataFrame."""
         if source_type == "database" and isinstance(source, str):
             self.matches = DataLoader.load_from_database(
-                source, table_name, season_filter, include_archived
+                source, table_name, season_filter, include_archived,
+                thursday_friday_afternoon_only, afternoon_start_hour
             )
         elif source_type == "csv" and isinstance(source, str):
             self.matches = DataLoader.load_from_csv(source, **kwargs)
@@ -554,6 +778,9 @@ def main():
     elo_calc = EloCalculator(initial_rating=400, k_factor=32.0)
     analyzer.add_calculator(elo_calc)
 
+    network_analyzer = NetworkAnalyzer()
+    analyzer.add_calculator(network_analyzer)
+
     # Example usage with your database
     db_path = "../backend/game_database.db"
 
@@ -562,7 +789,11 @@ def main():
         analyzer.print_database_info(db_path)
 
         # Load data from database (all seasons, including archived)
-        analyzer.load_data(db_path, source_type="database")
+        analyzer.load_data(
+            db_path,
+            source_type="database",
+            thursday_friday_afternoon_only=False,
+        )
 
         # Or load specific season only
         # analyzer.load_data(db_path, source_type="database", season_filter=3, include_archived=False)
@@ -575,6 +806,9 @@ def main():
 
         # Plot Elo ratings over time
         elo_calc.plot_ratings_over_time('elo_ratings_timeline.png')
+
+        network_analyzer.print_network_stats()
+        network_analyzer.plot_network('player_network.png', min_matches=1)
 
     except Exception as e:
         print(f"Error: {e}")
